@@ -32,6 +32,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -137,7 +138,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             File outputFile = new File(getExternalFilesDir(null), "extracted_texts.txt");
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile), StandardCharsets.UTF_8));
+            BufferedWriter writer = null;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                writer = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(outputFile.toPath()), StandardCharsets.UTF_8));
+            }
             writer.write(extractedTexts.toString());
             writer.close();
 
