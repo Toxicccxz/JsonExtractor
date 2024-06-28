@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int CREATE_FILE = 1;
     private static final int CREATE_FILE_AFTER = 2;
     private static final int TRANSLATED_TEXT_FILE_REQUEST_CODE = 43;
+    private static final int RESELECT_JSON_REQUEST_CODE = 44;
     private String extractedTexts; // 类成员变量，用于临时存储提取的文本
     private Uri originalJsonFileUri;
     private Uri translatedTextFileUri;
@@ -69,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
 
         Button buttonSelectTranslation = findViewById(R.id.button_select_translation);
         buttonSelectTranslation.setOnClickListener(v -> selectTranslationFile());
+
+        Button buttonSelectJson = findViewById(R.id.button_select_json);
+        buttonSelectJson.setOnClickListener(v -> reselectJsonFile());
 
         Button buttonExecuteReplacement = findViewById(R.id.button_execute_replacement);
         buttonExecuteReplacement.setOnClickListener(v -> executeReplacement());
@@ -99,6 +103,18 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             startActivityForResult(Intent.createChooser(intent, "选择一个JSON文件"), READ_REQUEST_CODE);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "请安装一个文件管理器.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void reselectJsonFile() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("application/json");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+        try {
+            startActivityForResult(Intent.createChooser(intent, "重新选择一个JSON文件"), RESELECT_JSON_REQUEST_CODE);
         } catch (android.content.ActivityNotFoundException ex) {
             Toast.makeText(this, "请安装一个文件管理器.", Toast.LENGTH_SHORT).show();
         }
@@ -176,56 +192,60 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         super.onActivityResult(requestCode, resultCode, resultData);
-        if (requestCode == READ_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            if (resultData != null) {
-                originalJsonFileUri = resultData.getData();
-                if (originalJsonFileUri != null) {
-                    // 获取文件的 MIME 类型
-                    String mimeType = getContentResolver().getType(originalJsonFileUri);
-
-                    // 检查 MIME 类型是否为 JSON
-                    if ("application/json".equals(mimeType)) {
-                        // MIME 类型匹配，处理文件
-                        processJsonFile(originalJsonFileUri);
-                    } else {
-                        // MIME 类型不匹配，提示用户
-                        Toast.makeText(this, "请选择JSON格式的文件", Toast.LENGTH_SHORT).show();
+        if (resultCode == Activity.RESULT_OK) {
+            if (requestCode == READ_REQUEST_CODE) {
+                if (resultData != null) {
+                    originalJsonFileUri = resultData.getData();
+                    if (originalJsonFileUri != null) {
+                        String mimeType = getContentResolver().getType(originalJsonFileUri);
+                        if ("application/json".equals(mimeType)) {
+                            processJsonFile(originalJsonFileUri);
+                        } else {
+                            Toast.makeText(this, "请选择JSON格式的文件", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
-            }
-        } else if (requestCode == TRANSLATED_TEXT_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            if (resultData != null) {
-                Uri uri = resultData.getData();
-                if (uri != null) {
-                    translatedTextFileUri = uri; // 存储翻译文本文件的 URI
+            } else if (requestCode == RESELECT_JSON_REQUEST_CODE) {
+                if (resultData != null) {
+                    Uri newJsonFileUri = resultData.getData();
+                    if (newJsonFileUri != null) {
+                        originalJsonFileUri = newJsonFileUri;
+                    }
                 }
-            }
-        } else if (requestCode == CREATE_FILE && resultCode == Activity.RESULT_OK) {
-            if (resultData != null) {
-                Uri uri = resultData.getData();
-                try {
-                    OutputStream outputStream = getContentResolver().openOutputStream(uri);
-                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
-                    writer.write(this.extractedTexts);
-                    writer.close();
-                    outputStream.close();
-                    Toast.makeText(this, "文件保存成功", Toast.LENGTH_LONG).show();
-                } catch (IOException e) {
-                    Toast.makeText(this, "文件保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            } else if (requestCode == TRANSLATED_TEXT_FILE_REQUEST_CODE) {
+                if (resultData != null) {
+                    Uri uri = resultData.getData();
+                    if (uri != null) {
+                        translatedTextFileUri = uri;
+                    }
                 }
-            }
-        } else if (requestCode == CREATE_FILE_AFTER && resultCode == Activity.RESULT_OK) {
-            if (resultData != null && resultData.getData() != null) {
-                Uri uri = resultData.getData();
-                try {
-                    OutputStream outputStream = getContentResolver().openOutputStream(uri);
-                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
-                    writer.write(updatedJsonContent); // 使用存储的 JSON 字符串
-                    writer.flush(); // 确保数据被写入
-                    writer.close();
-                    Toast.makeText(this, "文件保存成功", Toast.LENGTH_LONG).show();
-                } catch (IOException e) {
-                    Toast.makeText(this, "文件保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            } else if (requestCode == CREATE_FILE && resultCode == Activity.RESULT_OK) {
+                if (resultData != null) {
+                    Uri uri = resultData.getData();
+                    try {
+                        OutputStream outputStream = getContentResolver().openOutputStream(uri);
+                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+                        writer.write(this.extractedTexts);
+                        writer.close();
+                        outputStream.close();
+                        Toast.makeText(this, "文件保存成功", Toast.LENGTH_LONG).show();
+                    } catch (IOException e) {
+                        Toast.makeText(this, "文件保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                }
+            } else if (requestCode == CREATE_FILE_AFTER && resultCode == Activity.RESULT_OK) {
+                if (resultData != null && resultData.getData() != null) {
+                    Uri uri = resultData.getData();
+                    try {
+                        OutputStream outputStream = getContentResolver().openOutputStream(uri);
+                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+                        writer.write(updatedJsonContent);
+                        writer.flush();
+                        writer.close();
+                        Toast.makeText(this, "文件保存成功", Toast.LENGTH_LONG).show();
+                    } catch (IOException e) {
+                        Toast.makeText(this, "文件保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
                 }
             }
         }
